@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
-if [[ -d /opt/ruby-enterprise ]]; then
-    path=( /opt/ruby-enterprise/bin $path )
+if [[ -d /usr/local/go/bin ]]; then
+    path=( /usr/local/go/bin $path )
 fi
 
 if [[ -d $HOME/.jenv/bin ]]; then
@@ -15,18 +15,43 @@ if [[ -d /opt/maven/current ]]; then
     export M2_HOME=/opt/maven/current
 fi
 
+
+# Load nvm if present | Credit to https://github.com/nylen/dotfiles/blob/master/.bashrc_nylen_dotfiles
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # Load nvm but don't use it yet: we need to do some other hacks first.
+    # See https://github.com/creationix/nvm/issues/1261#issuecomment-366879288
+    source "$NVM_DIR/nvm.sh" --no-use
+    # I don't need this check, and it's slow (loads npm).
+    # Do not use the npm `prefix` config; do not report related bugs to nvm ;)
+    nvm_die_on_prefix() {
+        return 0
+    }
+    # This also loads npm; let's just skip it.
+    nvm_print_npm_version() {
+        return 0
+    }
+    # nvm_resolve_local_alias can also be slow; cache it.
+    if [ -s "$NVM_DIR/_default_version" ]; then
+        NVM_AUTO_LOAD_VERSION=$(cat "$NVM_DIR/_default_version")
+    else
+        NVM_AUTO_LOAD_VERSION=$(nvm_resolve_local_alias default)
+        echo "$NVM_AUTO_LOAD_VERSION" > "$NVM_DIR/_default_version"
+    fi
+    nvm use --silent "$NVM_AUTO_LOAD_VERSION"
+fi
 
 typeset -U manpath
 manpath=( $manpath )
 
 export EDITOR=/usr/bin/ex
-export VISUAL=/usr/bin/vim
+export VISUAL=/usr/bin/nvim
 export CLICOLOR=1
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
-export TERM=xterm-256color
+if [[ $TERM != *(256color) ]]; then
+    export TERM=xterm-256color
+fi
 
 # unset pushdignoredups & autopushd so zsh scripts behave normally
 setopt NO_pushd_ignore_dups
@@ -39,15 +64,15 @@ setopt dotglob
 if uname | grep Darwin >> /dev/null; then
     # env for stuff installed by macports
     export TERMINFO=/opt/local/share/terminfo
-    path=( /usr/texbin /opt/local/sbin/ /opt/local/bin $path ~/Library/Python/2.7/bin
-    /opt/local/lib/postgresql83/bin/ )
+    path=( /usr/texbin /opt/local/sbin/ /opt/local/bin /usr/local/opt/python/libexec/bin $path ~/Library/Python/2.7/bin /opt/local/lib/postgresql83/bin/ )
     manpath=(/opt/local/man /usr/local/man $manpath)
     cdpath=($cdpath ~/Documents)
 elif uname | grep Linux >> /dev/null; then
     export XDG_CONFIG_HOME="$HOME/.config"
 fi
 
-path=( $path ~/.local/bin . ~/bin )
+export GOPATH=$HOME/src/golib:$HOME/src/go:$HOME/wip/go
+path=( $path ~/.local/bin ~/bin $HOME/src/go/bin $HOME/wip/go/bin $HOME/src/golib/bin . )
 
 typeset -U path
 

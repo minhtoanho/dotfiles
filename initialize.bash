@@ -77,6 +77,10 @@ if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
     fi
 fi
 
+if [[ -e "$HOME/.vim" ]] && [[ ! -e "$HOME/.config/nvim" ]]; then
+    ln -sf $HOME/.vim $HOME/.config/nvim
+fi
+
 if [[ ! -d "$HOME/.vimbackup" ]]; then
     echo "Creating ~/.vimbackup"
     mkdir "$HOME/.vimbackup"
@@ -87,30 +91,52 @@ if [[ ! -d "$HOME/.fonts" ]]; then
     mkdir "$HOME/.fonts"
 fi
 
-printf "\033[1;32;49m=== Type Y/y to install zsh, tmux, python and powerline: \033[0m"
+printf "\033[1;32;49m=== Type Y/y to install zsh, python and powerline: \033[0m"
 read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
     if uname -a | grep -iq linux > /dev/null && grep -iq debian /etc/*release* > /dev/null; then
         echo 'Installing stuff ...'
+        sudo apt-get update
         sudo apt-get install aptitude
-        sudo aptitude install python-pip tmux git zsh
-        echo 'Installing powerline'
-        pip install --user git+git://github.com/powerline/powerline
-        find $HOME -iregex '.*tmux/powerline.conf' 2> /dev/null -print0 | xargs -0 -I % ln -sfv % $HOME/.powerline-tmux.conf
-        if which fc-cache; then
-            echo 'Installing powerline-patched-font'
-            git clone https://github.com/Lokaltog/powerline-fonts $HOME/powerline-font-82374846
-            find $HOME/powerline-font-82374846 -regextype posix-extended -iregex '.*\.(otf|ttf)' -print0 | xargs -0 -I % mv -v % $HOME/.fonts/
-            rm -rfv $HOME/powerline-font-82374846
-            fc-cache -vf $HOME/.fonts/
+        sudo apt-get -y install python-pip git zsh curl
+        sudo apt-get -y install debhelper autotools-dev dh-autoreconf file libncurses5-dev libevent-dev pkg-config libutempter-dev build-essential
+        printf "\033[1;32;49m=== Type Y/y to install powerline: \033[0m"
+        read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
+            echo 'Installing powerline'
+            pip install --user git+git://github.com/powerline/powerline
+            find $HOME -iregex '.*tmux/powerline.conf' 2> /dev/null -print0 | xargs -0 -I % ln -sfv % $HOME/.powerline-tmux.conf
+            printf "\033[1;32;49m=== Type Y/y to install powerline patched fonts: \033[0m"
+            read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
+                if which fc-cache; then
+                    echo 'Installing powerline-patched-font'
+                    git clone https://github.com/Lokaltog/powerline-fonts $HOME/powerline-font-82374846
+                    find $HOME/powerline-font-82374846 -regextype posix-extended -iregex '.*\.(otf|ttf)' -print0 | xargs -0 -I % mv -v % $HOME/.fonts/
+                    rm -rfv $HOME/powerline-font-82374846
+                    fc-cache -vf $HOME/.fonts/
+                fi
+            fi
         fi
+        printf "\033[1;32;49m=== Type Y/y to change default shell to zsh: \033[0m"
+        read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
         chsh -s `which zsh`
+        fi
+        printf "\033[1;32;49m=== Type Y/y to install neovim: \033[0m"
+        read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
+            sudo add-apt-repository ppa:neovim-ppa/stable
+            sudo apt-get update
+            sudo apt-get -y install neovim
+            sudo apt-get -y install python-dev python-pip python3-dev python3-pip
+            sudo apt-get -y install highlight tree
+            pip install --user neovim
+            pip3 install --user neovim
+        fi
     elif uname -a | grep -iq darwin > /dev/null; then
         if [ -f /usr/local/bin/brew ]; then
-            brew install python curl wget python3 tmux zsh git reattach-to-user-namespace
+            brew install python curl wget python3 tmux zsh git reattach-to-user-namespace highlight tree
             pip3 install git+git://github.com/powerline/powerline
             pip3 install psutil
+            pip install neovim
+            pip3 install neovim
             if grep -iq '/usr/local/bin/zsh' /etc/shells; then
-
                 printf "    \033[1;34;49m /usr/local/bin/zsh is already in /etc/shells\033[0m\n"
             else
                 printf "    \033[1;34;49m Adding homebrew's zsh to /etc/shells\n\033[0m"
@@ -121,8 +147,29 @@ read -n 1 c; echo ''; if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
     fi
 fi
 
-mkdir -p ~/.cache/dein
-curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > /tmp/installer.sh
-sh /tmp/installer.sh ~/.cache/dein
+echo $PWD
 
+printf "\033[1;32;49m=== Type Y/y to init dein: \033[0m"
+read -n 1 c; echo ''
+if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
+for d in dein ndein; do
+    if [[ ! -d "$HOME/.cache/$d" ]]; then
+        echo "Creating ~/.cache/$d"
+        mkdir -p ~/.cache/$d
+        curl https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh > /tmp/installer.sh
+        sh /tmp/installer.sh ~/.cache/$d
+    fi
+done
+fi
+
+printf "\033[1;32;49m=== Type Y/y to install/update fzf: \033[0m"
+read -n 1 c; echo ''
+if [[ $c == 'Y' ]] || [[ $c == 'y' ]]; then
+    if [[ ! -d "$HOME/.fzf" ]]; then
+        git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    else
+        (cd ~/.fzf; git pull origin master)
+    fi
+    ~/.fzf/install --all
+fi
 
